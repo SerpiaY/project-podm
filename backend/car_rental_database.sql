@@ -1,13 +1,13 @@
-SET schema 'myschema';
+SET schema 'public';
 DROP INDEX IF EXISTS IX_Rent;
 DROP TABLE IF EXISTS CUSTOMER;
 DROP TABLE IF EXISTS BRANCH;
 DROP TABLE IF EXISTS VEHICLE;
 DROP TABLE IF EXISTS PAYMENT;
-DROP TABLE IF EXISTS RENT_BILL;
+DROP TABLE IF EXISTS RENTBILL;
 DROP PROCEDURE IF EXISTS rent_vehicle ();
 DROP FUNCTION IF EXISTS vehicle_returned ();
-DROP TRIGGER IF EXISTS vehicle_returned ON RENT_BILL;
+DROP TRIGGER IF EXISTS vehicle_returned ON RENTBILL;
 
 
 CREATE TABLE CUSTOMER (
@@ -54,17 +54,11 @@ CREATE TABLE RENTBILL (
 );
 
 CREATE TABLE PAYMENT (
+	paymentid serial UNIQUE NOT NULL,
     rentid int NOT NULL,
     paymentamount numeric(15, 2) NOT NULL,
     paymentdate date NOT NULL,
-    PRIMARY KEY (paymentid)
-);
-
-CREATE TABLE RENT_VEHICLE (
-	rentid int NOT NULL,
-	vehicleid int NOT NULL,
-	PRIMARY KEY (rentid, vehicleid),
-	FOREIGN KEY (vehicleid) REFERENCES VEHICLE (vehicleid),
+    PRIMARY KEY (paymentid),
 	FOREIGN KEY (rentid) REFERENCES RENTBILL (rentid)
 );
 
@@ -77,7 +71,7 @@ CREATE TABLE RENT_PAYMENT (
 );
 
 CREATE UNIQUE INDEX IX_Rent
-ON RENT_BILL (customerid, isreturned)
+ON RENTBILL (customerid, isreturned)
 WHERE
     isreturned = FALSE;
 
@@ -96,7 +90,7 @@ BEGIN
       WHERE vehicleid = vehicleID
     ) AND NOT (
       SELECT count(*)
-      FROM RENT_BILL
+      FROM RENTBILL
       WHERE customerid = customerID AND isreturned = FALSE
     ) > 0 THEN
 
@@ -114,7 +108,7 @@ BEGIN
     );
 
     /* Insert new rental record */
-    INSERT INTO RENT_BILL (vehicle_id, trip_duration, customer_id, is_returned, date_rented)
+    INSERT INTO RENTBILL (vehicle_id, trip_duration, customer_id, is_returned, date_rented)
     VALUES (vehicleID, duration, customerID, FALSE, rentdate);
 
     /* Success message */
@@ -168,6 +162,6 @@ TRIGGER:
 This trigger calls the function car_returned() for each row that gets updated in the table RENT.
 */
 CREATE TRIGGER vehicle_returned
-    AFTER UPDATE ON RENT_BILL
+    AFTER UPDATE ON RENTBILL
     FOR EACH ROW
     EXECUTE FUNCTION vehicle_returned ();
